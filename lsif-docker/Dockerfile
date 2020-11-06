@@ -23,30 +23,20 @@ RUN chmod +x /usr/local/bin/src
 # Install Bear
 RUN apt-get install -y bear
 
-#
-# Build Tesseract
-#
-ENV PROJECT_REV=""
-RUN git clone --depth=10 https://github.com/tesseract-ocr/tesseract.git
-WORKDIR /tesseract
-RUN git checkout $PROJECT_REV
-# Deps
-RUN apt-get install -y autoconf automake libtool
-RUN apt-get install -y pkg-config
-RUN apt-get install -y libpng-dev
-RUN apt-get install -y libjpeg8-dev
-RUN apt-get install -y libtiff5-dev
-RUN apt-get install -y zlib1g-dev
-RUN apt-get install -y libleptonica-dev
-RUN apt-get install -y pkg-config
-# Generate dump.lsif
-RUN mkdir -p /install
-RUN ./autogen.sh
-RUN ./configure --prefix=/install
-RUN bear make
-RUN lsif-clang compile_commands.json
+# Install build dependencies that do not change from revision to revision
+RUN mkdir -p /sh
+COPY ./install_build_deps.sh /sh/install_build_deps.sh
+RUN /sh/install_build_deps.sh
 
-# Upload
+# Add entrypoint scripts
+COPY ./checkout.sh /sh/checkout.sh
+COPY ./gen_compile_commands.sh /sh/gen_compile_commands.sh
+COPY ./gen_lsif.sh /sh/gen_lsif.sh
+COPY ./upload.sh /sh/upload.sh
+COPY ./run.sh /sh/run.sh
+
+
+ENV PROJECT_REV=""
 ENV SRC_ACCESS_TOKEN=""
 ENV SRC_ENDPOINT="https://sourcegraph.com"
-ENTRYPOINT src lsif upload
+CMD /sh/run.sh
